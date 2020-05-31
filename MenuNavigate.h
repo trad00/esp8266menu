@@ -3,54 +3,71 @@
 
 #include <vector> 
 
-class IDisplay {
+class MenuItemBase;
+
+class IMenuDisplay {
   public:
-    virtual int getRowCount() = 0;
+    virtual uint8_t getRowCount() = 0;
     virtual void startDraw() = 0;
     virtual void drawTitle(String title) = 0;
-    virtual void drawLine(String title) = 0;
-    virtual void selectLine(int line) = 0;
+    virtual void drawLine(MenuItemBase* item) = 0;
+    virtual void selectLine(uint8_t line) = 0;
 };
+
+typedef void OnSelectFunk(MenuItemBase* menuItem);
 
 class MenuItemBase {
   public:
     MenuItemBase(String title) : title(title){};
     MenuItemBase(String title, bool backItem) : title(title), backItem(backItem){};
     MenuItemBase(String title, bool backItem, bool titleDisplay) : title(title), backItem(backItem), titleDisplay(titleDisplay){};
+    MenuItemBase(String title, OnSelectFunk* onSelect) : title(title), onSelect(onSelect){};
     String title;
     bool titleDisplay = false;
     bool backItem = false;
     std::vector<MenuItemBase*> subItems;
+    OnSelectFunk* onSelect;
   friend class MenuNavigate;
 };
 
 class MenuNavigate {
   public:
-    MenuNavigate(MenuItemBase* menu, IDisplay* display)
-    : rootMenu(menu), display(display) {
+    MenuNavigate(MenuItemBase* menu, IMenuDisplay* display)
+    : rootMenu(menu), display(display), pinSound(pinSound) {
       current.menu = menu;
       current.frameLines = display->getRowCount();
     }
     void begin();
     void end();
+    void up();
+    void down();
+    void select();
+    void setSound(uint8_t pin,bool on);
+    
+  private:
     void menuDraw(bool redraw);
     void menuEnter(MenuItemBase* menu);
     void menuExit();
-    void menuUp();
-    void menuDn();
-    void menuSelect();
+    void updateMenuPos();
+    inline void doSound(uint16_t frequency, uint16_t duration);
+    inline void moveSound()  { doSound(100,  5); };
+    inline void enterSound() { doSound(1000,15); };
+    inline void exitSound()  { doSound(800, 15); };
+    inline void selectSound(){ doSound(1000,15); };
     
   private:
-    IDisplay* display;
+    IMenuDisplay* display;
     MenuItemBase* rootMenu;
+    uint8_t pinSound;
+    bool soundOn = false;
     
     struct CurrentMenuData {
       MenuItemBase* menu;
-      int startLine = 0;
-      int frameLines;
-      int line = 0;
-      int frameOffset = 0;
-      int menuPos;
+      uint8_t startLine = 0;
+      uint8_t frameLines;
+      uint8_t line = 0;
+      uint8_t frameOffset = 0;
+      uint8_t menuPos;
     } current;
     
     std::vector<CurrentMenuData> breadcrumbs;
@@ -59,8 +76,17 @@ class MenuNavigate {
 void MenuNavigate::begin() {
   breadcrumbs.clear();
   menuEnter(rootMenu);
+}
+
+void MenuNavigate::setSound(uint8_t pin, bool on) {
+  pinSound = pin;
+  soundOn = pinSound >= 0 && on;
 };
 
+void MenuNavigate::doSound(uint16_t frequency, uint16_t duration) {
+  if (soundOn)
+    tone(pinSound, frequency, duration);
+}
 
 void MenuNavigate::menuDraw(bool redraw) {
   if (redraw){
@@ -68,9 +94,9 @@ void MenuNavigate::menuDraw(bool redraw) {
     if (current.menu->titleDisplay) {
       display->drawTitle(current.menu->title);
     }
-    for (int i = current.frameOffset;  i < current.frameOffset + current.frameLines; i++) {
+    for (uint8_t i = current.frameOffset;  i < current.frameOffset + current.frameLines; i++) {
       if (i < current.menu->subItems.size()) {
-        display->drawLine(current.menu->subItems[i]->title);
+        display->drawLine(current.menu->subItems[i]);
       }
     }
   }
@@ -104,49 +130,55 @@ void MenuNavigate::menuExit() {
   menuDraw(true);
 }
 
-void MenuNavigate::menuUp() {
+void MenuNavigate::updateMenuPos() {
+  moveSound();
+  current.menuPos = current.frameOffset + current.line;
+  if (current.menu->titleDisplay)
+    current.menuPos--;
+}
+
+void MenuNavigate::up() {
   if (current.line > current.startLine) {
     //cursor in frame move
     current.line--;
+    updateMenuPos();
     menuDraw(false);
   } else if (current.frameOffset > 0) {
     //frame offset move
     current.frameOffset--;
+    updateMenuPos();
     menuDraw(true);
   }
-  current.menuPos = current.frameOffset + current.line;
-  if (current.menu->titleDisplay)
-    current.menuPos--;
 }
 
-void MenuNavigate::menuDn() {
+void MenuNavigate::down() {
   if (current.line < current.startLine + current.frameLines - 1) {
     //cursor in frame move
     current.line++;
+    updateMenuPos();
     menuDraw(false);
   } else if (current.frameOffset < current.menu->subItems.size() - current.frameLines) {
     //frame offset move
     current.frameOffset++;
+    updateMenuPos();
     menuDraw(true);
   }
-  current.menuPos = current.frameOffset + current.line;
-  if (current.menu->titleDisplay)
-    current.menuPos--;
 }
 
-void MenuNavigate::menuSelect() {
+void MenuNavigate::select() {
   MenuItemBase* subItem = current.menu->subItems[current.menuPos];
-  Serial.println(subItem->title);
-  Serial.println(subItem->backItem);
   if (subItem->subItems.size() > 0) {
+    enterSound();
     menuEnter(subItem);
   }
   else if (subItem->backItem){
+    exitSound();
     menuExit();
   }
-//  else if (subItem->onSelect) {
-//    subItem->onSelect();
-//  }
+  else if (subItem->onSelect) {
+    selectSound();
+    subItem->onSelect(subItem);
+  }
 }
 
 #endif

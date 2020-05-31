@@ -4,26 +4,29 @@
 #include "MenuNavigate.h"
 #include <LiquidCrystal_PCF8574.h>
 
-class DisplayPCF8574 : public IDisplay {
+class MenuDisplayPCF8574 : public IMenuDisplay {
   #define LCD_COLS 20
   #define LCD_ROWS 4
   private:
     LiquidCrystal_PCF8574 lcd;
-    byte curLine;
-    byte prevLine;
+    uint8_t curLine;
+    uint8_t prevLine;
 
   public:
-    DisplayPCF8574() : lcd(0x27) {
+    MenuDisplayPCF8574() : lcd(0x27) {
       lcd.begin(LCD_COLS, LCD_ROWS);
       lcd.setBacklight(true);
       lcd.home();
       curLine = 0;
       prevLine = 0;
     }
-    int getRowCount() {
+    void setBacklight(int brightness) {
+      lcd.setBacklight(brightness);
+    }
+    uint8_t getRowCount() {
       return LCD_ROWS;
     }
-    int clear() {
+    void clear() {
       lcd.clear();
     }
     void startDraw() {
@@ -31,17 +34,17 @@ class DisplayPCF8574 : public IDisplay {
       curLine = 0;
     }
     void drawTitle(String title) {
-      int pos = (LCD_COLS - title.length()) / 2;
+      uint8_t pos = (LCD_COLS - title.length()) / 2;
       if (pos < 0)
         pos = 0;
       lcd.setCursor(pos, curLine++);
       lcd.print(title);
     }
-    void drawLine(String title) {
+    void drawLine(MenuItemBase* item) {
       lcd.setCursor(1, curLine++);
-      lcd.print(title);
+      lcd.print(item->title);
     }
-    void selectLine(int line) {
+    void selectLine(uint8_t line) {
       lcd.setCursor(0, prevLine);
       lcd.print(" ");
       lcd.setCursor(0, line);

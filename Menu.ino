@@ -1,29 +1,27 @@
-#include <Button.h>
+#include <Button2.h>
 #include <ESPRotary.h>
 
-#include "Display.h"
-#include "MenuNavigate.h"
-#include "MenuItem.h"
+#include "pins.h"
+#include "pitches.h"
+#include "Config.h"
 
-#define ENC_BTN D5
-#define ENC_A D6
-#define ENC_B D7
+enum MODES { MAIN, CONFIG };
+MODES mode = CONFIG;
 
-DisplayPCF8574 disp;
-MenuItem menu("MAIN MENU");
-
-MenuNavigate nav(&menu, &disp);
-Button button(ENC_BTN);
+Button2 button(ENC_BTN);
 ESPRotary rotary(ENC_A, ENC_B, 4);
 
-void buttonPressed() {
-  nav.menuSelect();
+void onEncLeft(ESPRotary& rotary) {
+  if (mode == CONFIG)
+    config::onEncLeft(rotary);
 }
 void onEncRight(ESPRotary& rotary) {
-  nav.menuDn();
+  if (mode == CONFIG)
+    config::onEncRight(rotary);
 }
-void onEncLeft(ESPRotary& rotary) {
-  nav.menuUp();
+void buttonPressed(Button2& btn) {
+  if (mode == CONFIG)
+    config::buttonPressed(btn);
 }
 
 void setup() {
@@ -33,21 +31,21 @@ void setup() {
   pinMode(ENC_A, INPUT_PULLUP);
   pinMode(ENC_B, INPUT_PULLUP);
   pinMode(ENC_BTN, INPUT_PULLUP);
+  pinMode(BUZZER, OUTPUT);
 
-  buildMenu(menu);
-
-  disp.clear();
-  
-  button.begin();
+  button.setPressedHandler(buttonPressed);
   rotary.setRightRotationHandler(onEncRight);
   rotary.setLeftRotationHandler(onEncLeft);
-  
-  nav.begin();
+
+  config::setup(BUZZER);
+  if (mode == CONFIG)
+    config::begin();
+
+//  if (config::soundOn)
+//    startMelodyPlay();
 }
 
 void loop() {
   rotary.loop();
-  if (button.toggled())
-    if (button.read() == Button::PRESSED)
-      buttonPressed();
+  button.loop();
 }
