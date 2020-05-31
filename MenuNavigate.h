@@ -14,7 +14,6 @@ class IDisplay {
 
 class MenuItemBase {
   public:
-    MenuItemBase(){};
     MenuItemBase(String title) : title(title){};
     MenuItemBase(String title, bool backItem) : title(title), backItem(backItem){};
     MenuItemBase(String title, bool backItem, bool titleDisplay) : title(title), backItem(backItem), titleDisplay(titleDisplay){};
@@ -137,6 +136,8 @@ void MenuNavigate::menuDn() {
 
 void MenuNavigate::menuSelect() {
   MenuItemBase* subItem = current.menu->subItems[current.menuPos];
+  Serial.println(subItem->title);
+  Serial.println(subItem->backItem);
   if (subItem->subItems.size() > 0) {
     menuEnter(subItem);
   }
