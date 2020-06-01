@@ -7,6 +7,7 @@
 class MenuDisplayPCF8574 : public IMenuDisplay {
   #define LCD_COLS 20
   #define LCD_ROWS 4
+  #define DATA_FIELD_COL 15
   private:
     LiquidCrystal_PCF8574 lcd;
     uint8_t curLine;
@@ -33,16 +34,23 @@ class MenuDisplayPCF8574 : public IMenuDisplay {
       lcd.clear();
       curLine = 0;
     }
-    void drawTitle(String title) {
+    void DrawTitle(MenuItemBase* item) {
+      String title = item->GetTitle();
       uint8_t pos = (LCD_COLS - title.length()) / 2;
       if (pos < 0)
         pos = 0;
       lcd.setCursor(pos, curLine++);
       lcd.print(title);
     }
-    void drawLine(MenuItemBase* item) {
+    void DrawItem(MenuItemBase* item) {
+      String str = item->FormatItem(DATA_FIELD_COL).substring(0, LCD_COLS-2);
       lcd.setCursor(1, curLine++);
-      lcd.print(item->title);
+      lcd.print(str);
+    }
+    void DrawField(MenuItemBase* item) {
+      String str = (item->GetDataAsString()+"     ").substring(0, LCD_COLS - DATA_FIELD_COL - 2);
+      lcd.setCursor(DATA_FIELD_COL, item->displayLine);
+      lcd.print(str);
     }
     void selectLine(uint8_t line) {
       lcd.setCursor(0, prevLine);

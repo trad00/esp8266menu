@@ -20,7 +20,7 @@ class ConfigItem : public MenuItemBase {
     ConfigItem(String title, String dataPath) : MenuItemBase(title), dataPath(dataPath) {};
     ConfigItem(String title, String dataPath, OnSelectFunk* onSelect) : MenuItemBase(title, onSelect), dataPath(dataPath) {};
     ConfigItem(String title, ONOFFTYPE onOffData, OnSelectFunk* onSelect) : MenuItemBase(title, onSelect), onOffData(onOffData) {type = ONOFF;};
-
+    
     String dataPath;
     String stringData;
     int intData;
@@ -29,9 +29,7 @@ class ConfigItem : public MenuItemBase {
     ONOFFTYPE onOffData = OFF;
     TYPES type = STRING;
     
-    int dataDisplColumn = 10;
-
-    String getDataAsString() {
+    String GetDataAsString() {
       switch (type) {
         case STRING:
           return stringData;
@@ -45,14 +43,21 @@ class ConfigItem : public MenuItemBase {
           return "";
       }
     }
+    
+    String FormatItem(uint8_t dataCol) {
+      String str;
+      String data = GetDataAsString();
+      if (data.length() == 0)
+        str = title;
+      else {
+        str = (title + "                    ").substring(0, dataCol - 1);
+        str += data;
+      }
+      return str;
+    }
 };
 
 class ConfigDisplay : public MenuDisplayPCF8574 {
-  public:
-    void drawLine(MenuItemBase* menuItem) {
-      MenuDisplayPCF8574::drawLine(menuItem);
-      ConfigItem* item = static_cast<ConfigItem*>(menuItem);
-    }
 };
 
 ConfigDisplay disp;
@@ -69,12 +74,15 @@ void SoundSelect(MenuItemBase* menuItem) {
   
   ConfigItem* item = static_cast<ConfigItem*>(menuItem);
   item->onOffData = soundOn ? ON : OFF;
+  disp.DrawField(item);
 }
+
 void BacklightSelect(MenuItemBase* menuItem) {
   backlightOn = !backlightOn;
   disp.setBacklight(backlightOn);
   ConfigItem* item = static_cast<ConfigItem*>(menuItem);
   item->onOffData = backlightOn ? ON : OFF;
+  disp.DrawField(item);
 }
 
 

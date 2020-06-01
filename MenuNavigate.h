@@ -9,8 +9,8 @@ class IMenuDisplay {
   public:
     virtual uint8_t getRowCount() = 0;
     virtual void startDraw() = 0;
-    virtual void drawTitle(String title) = 0;
-    virtual void drawLine(MenuItemBase* item) = 0;
+    virtual void DrawTitle(MenuItemBase* item) = 0;
+    virtual void DrawItem(MenuItemBase* item) = 0;
     virtual void selectLine(uint8_t line) = 0;
 };
 
@@ -22,9 +22,14 @@ class MenuItemBase {
     MenuItemBase(String title, bool backItem) : title(title), backItem(backItem){};
     MenuItemBase(String title, bool backItem, bool titleDisplay) : title(title), backItem(backItem), titleDisplay(titleDisplay){};
     MenuItemBase(String title, OnSelectFunk* onSelect) : title(title), onSelect(onSelect){};
+    virtual String GetTitle() {return title;}
+    virtual String FormatItem(uint8_t dataCol) {return title;}
+    virtual String GetDataAsString() {return "";}
+    
     String title;
     bool titleDisplay = false;
     bool backItem = false;
+    uint8_t displayLine = 0;
     std::vector<MenuItemBase*> subItems;
     OnSelectFunk* onSelect;
   friend class MenuNavigate;
@@ -92,11 +97,11 @@ void MenuNavigate::menuDraw(bool redraw) {
   if (redraw){
     display->startDraw();
     if (current.menu->titleDisplay) {
-      display->drawTitle(current.menu->title);
+      display->DrawTitle(current.menu);
     }
     for (uint8_t i = current.frameOffset;  i < current.frameOffset + current.frameLines; i++) {
       if (i < current.menu->subItems.size()) {
-        display->drawLine(current.menu->subItems[i]);
+        display->DrawItem(current.menu->subItems[i]);
       }
     }
   }
@@ -117,10 +122,7 @@ void MenuNavigate::menuEnter(MenuItemBase* menu) {
   
   current.line = current.startLine;
   current.frameOffset = 0;
-  current.menuPos = current.frameOffset + current.line;
-  if (current.menu->titleDisplay)
-    current.menuPos--;
-
+  updateMenuPos();
   menuDraw(true);
 }
 
@@ -131,7 +133,6 @@ void MenuNavigate::menuExit() {
 }
 
 void MenuNavigate::updateMenuPos() {
-  moveSound();
   current.menuPos = current.frameOffset + current.line;
   if (current.menu->titleDisplay)
     current.menuPos--;
@@ -140,11 +141,13 @@ void MenuNavigate::updateMenuPos() {
 void MenuNavigate::up() {
   if (current.line > current.startLine) {
     //cursor in frame move
+    moveSound();
     current.line--;
     updateMenuPos();
     menuDraw(false);
   } else if (current.frameOffset > 0) {
     //frame offset move
+    moveSound();
     current.frameOffset--;
     updateMenuPos();
     menuDraw(true);
@@ -154,11 +157,13 @@ void MenuNavigate::up() {
 void MenuNavigate::down() {
   if (current.line < current.startLine + current.frameLines - 1) {
     //cursor in frame move
+    moveSound();
     current.line++;
     updateMenuPos();
     menuDraw(false);
   } else if (current.frameOffset < current.menu->subItems.size() - current.frameLines) {
     //frame offset move
+    moveSound();
     current.frameOffset++;
     updateMenuPos();
     menuDraw(true);
@@ -167,6 +172,7 @@ void MenuNavigate::down() {
 
 void MenuNavigate::select() {
   MenuItemBase* subItem = current.menu->subItems[current.menuPos];
+  subItem->displayLine = current.line;
   if (subItem->subItems.size() > 0) {
     enterSound();
     menuEnter(subItem);
