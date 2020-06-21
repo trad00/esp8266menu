@@ -80,6 +80,7 @@ void SoundSelect(MenuItemBase* menuItem) {
 void BacklightSelect(MenuItemBase* menuItem) {
   backlightOn = !backlightOn;
   disp.setBacklight(backlightOn);
+  
   ConfigItem* item = static_cast<ConfigItem*>(menuItem);
   item->onOffData = backlightOn ? ON : OFF;
   disp.DrawField(item);
